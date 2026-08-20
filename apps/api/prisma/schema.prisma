@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id               String   @id @default(uuid())
+  slug             String   @unique
+  title            String
+  coverUrl         String?
+  developer        String?
+  description      String?  @db.Text
+  videoUrl         String?
+  criticSummary    String?  @db.Text
+  userSummary      String?  @db.Text
+  summaryUpdatedAt DateTime?
+  letsplayVideoUrl String?
+  letsplaySummary  String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  platformScores PlatformScore[]
+  processedDays  DailyProcessedGame[]
+
+  @@index([title])
+}
+
+model PlatformScore {
+  id         String  @id @default(uuid())
+  gameId     String
+  platform   String
+  metascore  Int?
+  userscore  Int?
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, platform])
+}
+
+model ScrapeState {
+  id                Int         @id @default(1)
+  workDate          DateTime    @db.Date
+  source            ScrapeSource
+  nextPage          Int         @default(1)
+  processedToday    Int         @default(0)
+  updatedAt         DateTime    @updatedAt
+}
+
+model DailyProcessedGame {
+  id         String   @id @default(uuid())
+  workDate   DateTime @db.Date
+  gameId     String
+  createdAt  DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([workDate, gameId])
+}
+
+enum ScrapeSource {
+  new_releases
+  browse_all
+}
