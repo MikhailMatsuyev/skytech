@@ -7,4 +7,5 @@ coverage/
 .DS_Store
 .idea/
 apps/api/generated/
+apps/api/public/
 docs/deploy.png
