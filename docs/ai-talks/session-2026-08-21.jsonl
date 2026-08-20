@@ -1,0 +1,3 @@
+{"turn":1,"role":"user","text":"Смержил в мэйн, обновил локально. Делаем следующий пункт"}
+{"turn":2,"role":"assistant","text":"Проверил main (мёрж на месте). Создал ветку feature/review-summaries-similar-games, начинаю Этап 2: LLM-саммари отзывов + похожие игры."}
+{"turn":3,"role":"assistant","text":"Реализовал SummaryService (Claude claude-opus-5 через @anthropic-ai/sdk, JSON-ответ critic/user summary, graceful degradation без LLM_API_KEY), подключил в scraper-runner. Реализовал GamesService.findSimilarGames (эвристика: разработчик+платформы+близость метаскора), проверил на реальных накопленных данных — работает адекватно. Обновил plan.md/CLAUDE.md."}
