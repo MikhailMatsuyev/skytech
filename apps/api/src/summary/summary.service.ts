@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
 import { MetacriticReviewQuote } from '../scraper/metacritic.types';
 
 export interface ReviewSummaryResult {
@@ -8,26 +7,28 @@ export interface ReviewSummaryResult {
   userSummary: string | null;
 }
 
-const MODEL = 'claude-opus-5';
 const MAX_QUOTES_PER_GROUP = 15;
 
+// English, matching the language of the scraped Metacritic content (titles, descriptions,
+// reviews) — small local models don't reliably follow a "respond in Russian" instruction.
 const SYSTEM_PROMPT =
-  'Ты — редактор игрового сайта. Отвечай СТРОГО одним JSON-объектом без markdown и без ' +
-  'пояснений вокруг: {"criticSummary": string|null, "userSummary": string|null}. Пиши по-русски, ' +
-  '2-4 предложения на поле: что хвалят, что ругают. Если для группы дано 0 цитат — верни null ' +
-  'для соответствующего поля.';
+  'You are a games editor. Reply with STRICTLY one JSON object, no markdown, no text around it: ' +
+  '{"criticSummary": string|null, "userSummary": string|null}. 2-4 sentences per field: what ' +
+  'people like, what they dislike. If a group has 0 quotes, return null for that field.';
+
+interface OllamaChatResponse {
+  message?: { content: string };
+}
 
 @Injectable()
 export class SummaryService {
   private readonly logger = new Logger(SummaryService.name);
-  private readonly client: Anthropic | null;
+  private readonly baseUrl: string;
+  private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
-    const apiKey = this.config.get<string>('LLM_API_KEY');
-    this.client = apiKey ? new Anthropic({ apiKey }) : null;
-    if (!this.client) {
-      this.logger.warn('LLM_API_KEY is not set — review summaries will be skipped');
-    }
+    this.baseUrl = this.config.get<string>('OLLAMA_BASE_URL', 'http://localhost:11434');
+    this.model = this.config.get<string>('OLLAMA_MODEL', 'qwen2.5:1.5b');
   }
 
   async summarizeReviews(
@@ -35,24 +36,13 @@ export class SummaryService {
     criticReviews: MetacriticReviewQuote[],
     userReviews: MetacriticReviewQuote[],
   ): Promise<ReviewSummaryResult> {
-    if (!this.client) return { criticSummary: null, userSummary: null };
     if (criticReviews.length === 0 && userReviews.length === 0) {
       return { criticSummary: null, userSummary: null };
     }
 
     try {
-      const response = await this.client.messages.create({
-        model: MODEL,
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: this.buildPrompt(gameTitle, criticReviews, userReviews) }],
-      });
-
-      const textBlock = response.content.find((b) => b.type === 'text');
-      if (!textBlock || textBlock.type !== 'text') {
-        throw new Error('No text block in LLM response');
-      }
-      return this.parseResult(textBlock.text);
+      const text = await this.complete(this.buildPrompt(gameTitle, criticReviews, userReviews));
+      return this.parseResult(text);
     } catch (err) {
       // A summarization failure for one game shouldn't abort the rest of the scrape batch.
       this.logger.warn(`Review summarization failed for "${gameTitle}": ${(err as Error).message}`);
@@ -60,20 +50,45 @@ export class SummaryService {
     }
   }
 
+  private async complete(prompt: string): Promise<string> {
+    const res = await fetch(`${this.baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: this.model,
+        stream: false,
+        format: 'json',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Ollama request failed: ${res.status} ${res.statusText}`);
+    }
+    const data = (await res.json()) as OllamaChatResponse;
+    const content = data.message?.content;
+    if (!content) {
+      throw new Error('No message content in Ollama response');
+    }
+    return content;
+  }
+
   private buildPrompt(gameTitle: string, criticReviews: MetacriticReviewQuote[], userReviews: MetacriticReviewQuote[]): string {
     const format = (reviews: MetacriticReviewQuote[]) =>
       reviews
         .slice(0, MAX_QUOTES_PER_GROUP)
         .map((r) => `- (${r.score ?? '?'}/100) ${r.quote}`)
-        .join('\n') || '(нет отзывов)';
+        .join('\n') || '(no reviews)';
 
     return [
-      `Игра: ${gameTitle}`,
+      `Game: ${gameTitle}`,
       '',
-      `Отзывы критиков (${criticReviews.length}):`,
+      `Critic reviews (${criticReviews.length}):`,
       format(criticReviews),
       '',
-      `Отзывы игроков (${userReviews.length}):`,
+      `User reviews (${userReviews.length}):`,
       format(userReviews),
     ].join('\n');
   }

@@ -1,3 +1,14 @@
 {"turn":1,"role":"user","text":"Смержил в мэйн, обновил локально. Делаем следующий пункт"}
 {"turn":2,"role":"assistant","text":"Проверил main (мёрж на месте). Создал ветку feature/review-summaries-similar-games, начинаю Этап 2: LLM-саммари отзывов + похожие игры."}
-{"turn":3,"role":"assistant","text":"Реализовал SummaryService (Claude claude-opus-5 через @anthropic-ai/sdk, JSON-ответ critic/user summary, graceful degradation без LLM_API_KEY), подключил в scraper-runner. Реализовал GamesService.findSimilarGames (эвристика: разработчик+платформы+близость метаскора), проверил на реальных накопленных данных — работает адекватно. Обновил plan.md/CLAUDE.md."}
+{"turn":3,"role":"assistant","text":"Реализовал SummaryService (Claude claude-opus-5 через @anthropic-ai/sdk, JSON-ответ critic/user summary, graceful degradation без LLM_API_KEY), подключил в scraper-runner. Реализовал GamesService.findSimilarGames (эвристика: разработчик+платформы+близость метаскора), проверил на реальных накопленных данных — работает адекватно. Обновил plan.md/CLAUDE.md. Закоммитил и запушил ветку feature/review-summaries-similar-games — пользователь смержил в main."}
+{"turn":4,"role":"user","text":"Так ты хочешь облачную ллм вызывать?"}
+{"turn":5,"role":"assistant","text":"Объяснил, зачем LLM для саммари отзывов, предложил провайдер-агностичный интерфейс (Anthropic/Ollama)."}
+{"turn":6,"role":"user","text":"Нет, облачная версия требует токена, правильно? А если локальную развернуть?"}
+{"turn":7,"role":"assistant","text":"Объяснил trade-off: Ollama бесплатна локально, но на дешёвом хостинге для деплоя не потянет. Предложил провайдер-агностичный интерфейс с дефолтом на Ollama."}
+{"turn":8,"role":"user","text":"Ставь локальную модель минимальную"}
+{"turn":9,"role":"assistant","text":"Поднял Ollama в docker-compose, реализовал LlmClient интерфейс (Anthropic/Ollama), скачал модель qwen2.5:1.5b, прогнал вживую на реальных отзывах — работает (JSON корректный, но модель ответила по-английски вместо русского несмотря на промпт), поправил системный промпт на английский."}
+{"turn":10,"role":"user","text":"Антропиком клиентом в облаке не будем вообще пользоваться"}
+{"turn":11,"role":"assistant","text":"Удалил Anthropic-клиент и абстракцию провайдеров полностью, оставил только прямой вызов Ollama в SummaryService. Убрал @anthropic-ai/sdk, LLM_API_KEY/LLM_PROVIDER из .env. Проверил компиляцию и старт."}
+{"turn":12,"role":"user","text":"Ветку"}
+{"turn":13,"role":"user","text":"feature/review-summaries-similar-games только что смержил в мэин"}
+{"turn":14,"role":"assistant","text":"Переключился на обновлённый main, создал новую ветку feature/local-ollama-summaries, перенёс туда незакоммиченные Ollama-изменения. Обновил plan.md/CLAUDE.md."}
