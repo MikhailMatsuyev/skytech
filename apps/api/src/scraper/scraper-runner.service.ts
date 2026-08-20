@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ScrapeSource } from '@prisma/client';
 import { GamesService } from '../games/games.service';
 import { ScrapeStateService } from '../scrape-state/scrape-state.service';
+import { SummaryService } from '../summary/summary.service';
 import { MetacriticClientService } from './metacritic-client.service';
 import { MetacriticListItem } from './metacritic.types';
 
@@ -27,6 +28,7 @@ export class ScraperRunnerService {
     private readonly client: MetacriticClientService,
     private readonly games: GamesService,
     private readonly scrapeState: ScrapeStateService,
+    private readonly summary: SummaryService,
     private readonly events: EventEmitter2,
   ) {}
 
@@ -87,7 +89,8 @@ export class ScraperRunnerService {
     for (const item of unprocessed) {
       try {
         const detail = await this.client.getGameDetail(item.slug);
-        const game = await this.games.upsertFromMetacritic(detail);
+        const summary = await this.summary.summarizeReviews(detail.title, detail.criticReviews, detail.userReviews);
+        const game = await this.games.upsertFromMetacritic(detail, summary);
         await this.scrapeState.markProcessed(game.id);
         newlyProcessed++;
       } catch (err) {
