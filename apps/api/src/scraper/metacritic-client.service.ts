@@ -135,10 +135,14 @@ export class MetacriticClientService {
     const criticReviews = this.extractReviews(page.components, 'latest-critic-reviews');
     const userReviews = this.extractReviews(page.components, 'top-user-reviews');
 
-    const userScoreSummary = findComponent<{ item: { score?: number | null } }>(
+    const userScoreSummary = findComponent<{ item: { score?: number | null; reviewCount?: number | null } }>(
       page.components,
       'user-score-summary',
     );
+    // Metacritic returns score: 0 (not null) when there are zero user reviews yet — treat that
+    // as "no score" rather than a real 0/10.
+    const userScoreItem = userScoreSummary?.data.item;
+    const leadPlatformUserscore = userScoreItem?.reviewCount ? (userScoreItem.score ?? null) : null;
 
     return {
       slug: item.slug,
@@ -148,7 +152,7 @@ export class MetacriticClientService {
       developer,
       videoUrl,
       platforms,
-      leadPlatformUserscore: userScoreSummary?.data.item?.score ?? null,
+      leadPlatformUserscore,
       criticReviews,
       userReviews,
     };

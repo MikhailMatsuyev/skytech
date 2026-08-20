@@ -20,6 +20,9 @@ model Game {
   summaryUpdatedAt DateTime?
   letsplayVideoUrl String?
   letsplaySummary  String?  @db.Text
+  // Denormalized from PlatformScore on every upsert so list filtering/sorting stays plain SQL.
+  averageMetascore Float?
+  averageUserscore Float?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
