@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { ScraperModule } from './scraper/scraper.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     PrismaModule,
+    ScraperModule,
   ],
   controllers: [AppController],
   providers: [AppService],
