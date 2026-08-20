@@ -1,6 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MetacriticGameDetail } from '../scraper/metacritic.types';
+
+export type GamesSortBy = 'metascore' | 'userscore' | 'title' | 'updatedAt';
+
+export interface ListGamesParams {
+  platform?: string;
+  search?: string;
+  sortBy: GamesSortBy;
+  order: 'asc' | 'desc';
+  page: number;
+  pageSize: number;
+}
 
 @Injectable()
 export class GamesService {
@@ -53,7 +65,65 @@ export class GamesService {
       });
     }
 
+    const allScores = await this.prisma.platformScore.findMany({ where: { gameId: game.id } });
+    await this.prisma.game.update({
+      where: { id: game.id },
+      data: {
+        averageMetascore: this.average(allScores, 'metascore'),
+        averageUserscore: this.average(allScores, 'userscore'),
+      },
+    });
+
     return game;
+  }
+
+  async listGames(params: ListGamesParams) {
+    const where: Prisma.GameWhereInput = {
+      ...(params.platform ? { platformScores: { some: { platform: params.platform } } } : {}),
+      ...(params.search ? { title: { contains: params.search, mode: 'insensitive' } } : {}),
+    };
+
+    const orderBy: Prisma.GameOrderByWithRelationInput =
+      params.sortBy === 'metascore'
+        ? { averageMetascore: { sort: params.order, nulls: 'last' } }
+        : params.sortBy === 'userscore'
+          ? { averageUserscore: { sort: params.order, nulls: 'last' } }
+          : params.sortBy === 'title'
+            ? { title: params.order }
+            : { updatedAt: params.order };
+
+    const [items, total] = await Promise.all([
+      this.prisma.game.findMany({
+        where,
+        orderBy,
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
+        include: { platformScores: true },
+      }),
+      this.prisma.game.count({ where }),
+    ]);
+
+    return { items, total, page: params.page, pageSize: params.pageSize };
+  }
+
+  async getBySlug(slug: string) {
+    const game = await this.prisma.game.findUnique({ where: { slug }, include: { platformScores: true } });
+    if (!game) return null;
+
+    const similarGames = await this.findSimilarGames(game.id, 5);
+    return {
+      ...game,
+      similarGames: similarGames.map((g) => ({ id: g.id, slug: g.slug, title: g.title, coverUrl: g.coverUrl })),
+    };
+  }
+
+  async listPlatforms(): Promise<string[]> {
+    const rows = await this.prisma.platformScore.findMany({
+      distinct: ['platform'],
+      select: { platform: true },
+      orderBy: { platform: 'asc' },
+    });
+    return rows.map((r) => r.platform);
   }
 
   /**
@@ -70,7 +140,6 @@ export class GamesService {
     if (!target) return [];
 
     const targetPlatforms = new Set(target.platformScores.map((p) => p.platform));
-    const targetAvgScore = this.averageMetascore(target.platformScores);
 
     const candidates = await this.prisma.game.findMany({
       where: { id: { not: gameId } },
@@ -85,9 +154,8 @@ export class GamesService {
       const sharedPlatforms = candidate.platformScores.filter((p) => targetPlatforms.has(p.platform)).length;
       score += sharedPlatforms * 2;
 
-      const candidateAvgScore = this.averageMetascore(candidate.platformScores);
-      if (targetAvgScore !== null && candidateAvgScore !== null) {
-        score += Math.max(0, 2 - Math.abs(targetAvgScore - candidateAvgScore) / 10);
+      if (target.averageMetascore !== null && candidate.averageMetascore !== null) {
+        score += Math.max(0, 2 - Math.abs(target.averageMetascore - candidate.averageMetascore) / 10);
       }
 
       return { candidate, score };
@@ -100,8 +168,8 @@ export class GamesService {
       .map((s) => s.candidate);
   }
 
-  private averageMetascore(scores: { metascore: number | null }[]): number | null {
-    const values = scores.map((s) => s.metascore).filter((v): v is number => v !== null);
+  private average(scores: { metascore: number | null; userscore: number | null }[], key: 'metascore' | 'userscore'): number | null {
+    const values = scores.map((s) => s[key]).filter((v): v is number => v !== null);
     if (values.length === 0) return null;
     return values.reduce((sum, v) => sum + v, 0) / values.length;
   }

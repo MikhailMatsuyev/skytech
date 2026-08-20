@@ -12,3 +12,11 @@
 {"turn":12,"role":"user","text":"Ветку"}
 {"turn":13,"role":"user","text":"feature/review-summaries-similar-games только что смержил в мэин"}
 {"turn":14,"role":"assistant","text":"Переключился на обновлённый main, создал новую ветку feature/local-ollama-summaries, перенёс туда незакоммиченные Ollama-изменения. Обновил plan.md/CLAUDE.md."}
+{"turn":15,"role":"assistant","text":"Закоммитил и запушил feature/local-ollama-summaries."}
+{"turn":16,"role":"user","text":"Смержил в мэйн и обновил ее локально. Дальше что?"}
+{"turn":17,"role":"assistant","text":"Проверил main, создал ветку feature/games-api-frontend, начал Этап 4: REST API (список/карточка/платформы игр) + фронтенд."}
+{"turn":18,"role":"user","text":"Какую ос на хостинге выбрать для этого проекта? [скриншот]"}
+{"turn":19,"role":"assistant","text":"Посоветовал Ubuntu 24.04 без панели управления (всё через Docker)."}
+{"turn":20,"role":"user","text":"[скриншот] Без установки SSH ключа, придёт пароль root / Добавить публичный SSH ключ"}
+{"turn":21,"role":"assistant","text":"Посоветовал SSH-ключ, дал команду ssh-keygen."}
+{"turn":22,"role":"assistant","text":"Добавил averageMetascore/averageUserscore в схему (денормализация для сортировки), бэкфилл 82 игр. Нашёл и починил баг: Metacritic отдаёт userScore.score=0 вместо null при отсутствии отзывов — почистил 75 фиктивных нулей в БД. Реализовал GET /games (фильтр/поиск/сортировка/пагинация), GET /games/meta/platforms, GET /games/:slug (+похожие игры, 404). Проверил все эндпоинты curl'ом — работают. Реализовал фронтенд (React Router): список игр карточками, карточка игры, фильтр по платформе, поиск, сортировка, пагинация. Собирается, оба dev-сервера стартуют. Визуально в браузере не проверено — расширение Chrome не подключено в этой сессии."}
