@@ -71,21 +71,27 @@ JSON вместо парсинга HTML-вёрстки. Известное ог�
 **Похожие игры**: `GamesService.findSimilarGames` — эвристика (разработчик + пересечение
 платформ + близость среднего Metascore), без embeddings/LLM. Проверено на реальных данных.
 
-**Веб-интерфейс**: `apps/web` (React Router) ходит в `GET /games`/`GET /games/:slug`/
-`GET /games/meta/platforms` из `apps/api`. `Game.averageMetascore`/`averageUserscore`
-денормализованы на upsert для простой SQL-сортировки списка.
+**Веб-интерфейс**: `apps/web` (React Router) ходит в `GET /api/games`/`GET /api/games/:slug`/
+`GET /api/games/meta/platforms` из `apps/api`. `Game.averageMetascore`/`averageUserscore`
+денормализованы на upsert для простой SQL-сортировки списка. API — на `/api/*`
+(`setGlobalPrefix`), т.к. `/games/:slug` есть и как клиентский роут React Router, и как API-роут —
+без префикса они бы конфликтовали при прямом заходе на URL.
 
 **Деплой**: пользователь берёт свой VPS (не Railway/Render, как предполагалось изначально) —
-Ubuntu 24.04 без панели управления, доступ по SSH-ключу. Разворачивать тем же
-`docker-compose.yml`, что и локально (postgres + ollama + api/web).
+Ubuntu 24.04 без панели управления, доступ по SSH-ключу. Есть `Dockerfile` (multi-stage,
+собирает web+api в один образ, отдаёт SPA+API на одном порту) и `docker-compose.prod.yml`
+(postgres + ollama + app на порту 80). Прогнано полностью локально — работает. На сам VPS ещё
+не выкатывали.
 
-YouTube-часть, деплой на сервер — ещё не реализованы. Актуальный чеклист по этапам — `docs/plan.md`.
+YouTube-часть — не реализована, деплой на сам сервер — в процессе. Актуальный чеклист —
+`docs/plan.md`.
 
 ## Статус
 
-Готово и проверено: каркас монорепо, Prisma-схема на локальном Postgres, скрапер Metacritic
-(New Releases + пагинация SEE ALL + дедуп по дню + upsert в БД), почасовой cron + ручной запуск
-`POST /scraper/run` с защитой от гонки, LLM-саммари отзывов через локальную Ollama (прогнано
-вживую), похожие игры (эвристика, проверено), REST API списка/карточки игр (проверено curl'ом),
-фронтенд на React Router (компилируется, dev-сервер стартует, **визуально в браузере пока не
-проверялось** — нет доступа к Chrome-расширению в этой сессии). Подробности — `docs/plan.md`.
+Готово и проверено: каркас монорепо, Prisma-схема на Postgres, скрапер Metacritic (New Releases +
+пагинация SEE ALL + дедуп по дню + upsert в БД), почасовой cron + ручной запуск
+`POST /api/scraper/run` с защитой от гонки, LLM-саммари отзывов через локальную Ollama (прогнано
+вживую), похожие игры (эвристика, проверено), REST API списка/карточки игр, фронтенд на React
+Router — всё собрано в один Docker-образ и прогнано локально через `docker-compose.prod.yml`
+(миграции на старте, SPA+API на одном порту, старые данные сохраняются в volume). Дальше —
+реальный деплой на VPS пользователя. Подробности — `docs/plan.md`.

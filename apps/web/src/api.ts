@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+// Empty-string default (relative /api/...) is correct for production, where the built frontend
+// is served by the same origin as the API. Local dev overrides this via apps/web/.env because
+// `vite` and `nest start` run on different ports.
+const API_URL = `${import.meta.env.VITE_API_URL ?? ''}/api`;
 
 export interface PlatformScore {
   id: string;

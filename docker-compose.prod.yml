@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: skytech
+      POSTGRES_PASSWORD: skytech
+      POSTGRES_DB: skytech
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["sh", "-c", "ollama serve & sleep 3 && ollama pull qwen2.5:1.5b && wait"]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - ollama
+    environment:
+      DATABASE_URL: postgresql://skytech:skytech@postgres:5432/skytech
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5:1.5b
+      PORT: 3000
+    ports:
+      - "80:3000"
+
+volumes:
+  postgres_data:
+  ollama_data:
